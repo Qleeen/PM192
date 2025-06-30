@@ -1,38 +1,98 @@
 import React, { useState, useEffect } from 'react';
-import {Alert,ImageBackground,SafeAreaView,StyleSheet,Switch,Text,TextInput,TouchableOpacity,View,Image,} from 'react-native';
+import {
+  Alert,
+  ImageBackground,
+  SafeAreaView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+  Image,
+  FlatList
+} from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 
 export default function App() {
-  const [nombre, setNombre] = useState('');
-  const [correo, setCorreo] = useState('');
-  const [aceptaTerminos, setAceptaTerminos] = useState(false);
+  const [titulo, setTitulo] = useState('');
+  const [editorial, setEditorial] = useState('');
+  const [numero, setNumero] = useState('');
+  const [cantidad, setCantidad] = useState('');
+  const [comics, setComics] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isSplashVisible, setIsSplashVisible] = useState(true);
+  const [modoEdicion, setModoEdicion] = useState(false);
+  const [comicEditandoId, setComicEditandoId] = useState(null);
 
   useEffect(() => {
-
     const timer = setTimeout(() => {
       setIsSplashVisible(false);
     }, 2000);
     return () => clearTimeout(timer);
   }, []);
 
-  const handleRegistro = () => {
-    if (nombre.trim() === '' || correo.trim() === '') {
-      Alert.alert('Error', 'Llena los campos de favor.');
-      return;
-    }
-
-    if (!aceptaTerminos) {
-      Alert.alert('Términos no aceptados', 'Aceptalos pli');
+  const handleGuardarComic = () => {
+    if (!titulo || !editorial || !numero || !cantidad) {
+      Alert.alert('Campos incompletos', 'Por favor, llena todos los campos del cómic.');
       return;
     }
 
     setIsLoading(true);
     setTimeout(() => {
+      if (modoEdicion) {
+        const nuevosComics = comics.map((comic) =>
+          comic.id === comicEditandoId
+            ? { ...comic, titulo, editorial, numero, cantidad }
+            : comic
+        );
+        setComics(nuevosComics);
+        Alert.alert('Cómic actualizado', `${titulo} #${numero}`);
+      } else {
+        const nuevoComic = {
+          id: Date.now().toString(),
+          titulo,
+          editorial,
+          numero,
+          cantidad,
+        };
+        setComics([...comics, nuevoComic]);
+        Alert.alert('Cómic agregado', `${titulo} #${numero}`);
+      }
+
+      setTitulo('');
+      setEditorial('');
+      setNumero('');
+      setCantidad('');
+      setModoEdicion(false);
+      setComicEditandoId(null);
       setIsLoading(false);
-      Alert.alert('Registro completado', `Nombre: ${nombre}\nEmail: ${correo}`);
-    }, 2000);
+    }, 1000);
+  };
+
+  const editarComic = (comic) => {
+    setTitulo(comic.titulo);
+    setEditorial(comic.editorial);
+    setNumero(comic.numero);
+    setCantidad(comic.cantidad);
+    setModoEdicion(true);
+    setComicEditandoId(comic.id);
+  };
+
+  const eliminarComic = (id) => {
+    Alert.alert(
+      '¿Eliminar cómic?',
+      '¿Estás seguro que deseas eliminar este cómic?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Eliminar',
+          style: 'destructive',
+          onPress: () => {
+            setComics(comics.filter((comic) => comic.id !== id));
+          },
+        },
+      ]
+    );
   };
 
   if (isSplashVisible) {
@@ -64,47 +124,76 @@ export default function App() {
     >
       <SafeAreaView style={styles.safeArea}>
         <StatusBar style="light" />
-        <Text style={styles.logo}>Registrese de favor</Text>
+        <Text style={styles.logo}>{modoEdicion ? 'Editar Cómic' : 'Agregar Cómic'}</Text>
 
         <View style={styles.card}>
           <TextInput
             style={styles.input}
-            placeholder="Nombre completo"
+            placeholder="Título del cómic"
             placeholderTextColor="#333"
-            value={nombre}
-            onChangeText={setNombre}
+            value={titulo}
+            onChangeText={setTitulo}
             editable={!isLoading}
           />
-
           <TextInput
             style={styles.input}
-            placeholder="Correo electrónico"
+            placeholder="Editorial"
             placeholderTextColor="#333"
-            keyboardType="email-address"
-            value={correo}
-            onChangeText={setCorreo}
+            value={editorial}
+            onChangeText={setEditorial}
             editable={!isLoading}
           />
-
-          <View style={styles.terminosContainer}>
-            <Text style={styles.terminosText}>Aceptar términos y condiciones</Text>
-            <Switch
-              value={aceptaTerminos}
-              onValueChange={setAceptaTerminos}
-              trackColor={{ false: '#ccc', true: '#e2e800' }}
-              thumbColor={aceptaTerminos ? '#d90000' : '#999'}
-              disabled={isLoading}
-            />
-          </View>
+          <TextInput
+            style={styles.input}
+            placeholder="Número"
+            placeholderTextColor="#333"
+            keyboardType="numeric"
+            value={numero}
+            onChangeText={setNumero}
+            editable={!isLoading}
+          />
+          <TextInput
+            style={styles.input}
+            placeholder="Cantidad"
+            placeholderTextColor="#333"
+            keyboardType="numeric"
+            value={cantidad}
+            onChangeText={setCantidad}
+            editable={!isLoading}
+          />
 
           <TouchableOpacity
             style={[styles.btnRegistro, isLoading && { opacity: 0.6 }]}
-            onPress={handleRegistro}
+            onPress={handleGuardarComic}
             disabled={isLoading}
           >
-            <Text style={styles.btnText}>Registrarse</Text>
+            <Text style={styles.btnText}>
+              {modoEdicion ? 'Actualizar Cómic' : 'Guardar Cómic'}
+            </Text>
           </TouchableOpacity>
         </View>
+
+        <FlatList
+          data={comics}
+          keyExtractor={(item) => item.id}
+          style={{ marginTop: 20, width: '90%' }}
+          renderItem={({ item }) => (
+            <View style={styles.comicItem}>
+              <TouchableOpacity onPress={() => editarComic(item)}>
+                <Text style={styles.comicText}>
+                  {item.titulo} #{item.numero} - {item.editorial}
+                </Text>
+                <Text style={{ color: '#333' }}>Cantidad: {item.cantidad}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => eliminarComic(item.id)}
+                style={styles.eliminarBtn}
+              >
+                <Text style={{ color: '#fff' }}>Eliminar</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        />
       </SafeAreaView>
     </ImageBackground>
   );
@@ -155,23 +244,12 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: '#e2e800',
   },
-  terminosContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 20,
-    justifyContent: 'space-between',
-  },
-  terminosText: {
-    color: '#000000',
-    fontSize: 18,
-    flex: 1,
-    marginRight: 10,
-  },
   btnRegistro: {
     backgroundColor: 'rgba(217, 0, 0, 0.81)',
     padding: 15,
     borderRadius: 10,
     alignItems: 'center',
+    marginTop: 10,
   },
   btnText: {
     color: '#ffffff',
@@ -207,5 +285,26 @@ const styles = StyleSheet.create({
     color: '#000',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  comicItem: {
+    backgroundColor: '#fff',
+    padding: 10,
+    marginBottom: 10,
+    borderRadius: 8,
+    borderColor: '#ccc',
+    borderWidth: 1,
+  },
+  comicText: {
+    fontWeight: 'bold',
+    color: '#000',
+    marginBottom: 4,
+  },
+  eliminarBtn: {
+    backgroundColor: 'red',
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderRadius: 5,
+    marginTop: 5,
+    alignSelf: 'flex-start',
   },
 });
